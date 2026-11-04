@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 import QtQuick.Effects
+import "third_party/maclock"
 
 Rectangle {
     id: root
@@ -292,38 +293,43 @@ Rectangle {
     }
 
     // ==========================================
-    // CLOCK
-    // ==========================================
-
-    Column {
+    // CLOCK — MacLock MorphText + Liquid Glass
+    Item {
         id: clock
 
-        anchors.top: parent.top
-        anchors.topMargin: 76 * root.u
+        y: (root.shown ? 0.075 : 0.035) * root.height
 
         anchors.horizontalCenter: parent.horizontalCenter
 
-        spacing: -5 * root.u
+        width: Math.max(dateTxt.implicitWidth, timeItem.width)
+
+        height:
+            dateTxt.implicitHeight
+            + timeItem.y
+            - dateTxt.height
+            + timeItem.height
 
         opacity: root.shown ? 1 : 0
 
-        transform: Translate {
-            y: root.shown ? 0 : -22 * root.u
-
-            Behavior on y {
-                NumberAnimation {
-                    duration: 700
-                    easing.type: Easing.OutQuint
-                }
+        Behavior on y {
+            NumberAnimation {
+                duration: 650
+                easing.type: Easing.OutQuint
             }
         }
 
         Behavior on opacity {
-            NumberAnimation { duration: 700 }
+            NumberAnimation { duration: 650 }
         }
 
-        Text {
+        // DATE
+        MorphText {
+            id: dateTxt
+
             anchors.horizontalCenter: parent.horizontalCenter
+
+            horizontalAlignment: Text.AlignHCenter
+            renderType: Text.NativeRendering
 
             text: Qt.formatDate(
                 root.now,
@@ -336,28 +342,225 @@ Rectangle {
             font.pixelSize: 17 * root.u
             font.weight: Font.Medium
 
-            opacity: 0.85
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowBlur: 0.6
+                shadowOpacity: 0.25
+                shadowVerticalOffset: 1
+            }
         }
 
-        Text {
+        // GLASS CLOCK
+        Item {
+            id: timeItem
+
+            anchors.top: dateTxt.bottom
+            anchors.topMargin: -14 * root.u
             anchors.horizontalCenter: parent.horizontalCenter
 
-            text: Qt.formatTime(
-                root.now,
-                config.timeFormat || "hh:mm"
-            )
+            readonly property real clockPx: 138 * root.u
+            readonly property real mp:
+                Math.max(48 * root.u, clockPx * 0.5)
 
-            color: "#FFFFFF"
+            width: timeTxt.implicitWidth + 40 * root.u
+            height: timeTxt.implicitHeight
 
-            font.family: root.uiFont
-            font.pixelSize: 105 * root.u
-            font.weight: Font.Normal
+            // MorphText is the hidden text mask.
+            MorphText {
+                id: timeTxt
 
-            renderType: Text.QtRendering
+                anchors.centerIn: parent
+                horizontalAlignment: Text.AlignHCenter
+
+                duration: 560
+                useBlur: false
+                animateWidth: false
+                stretch: false
+
+                scaleIn: 1.03
+                scaleOut: 0.97
+
+                // 12-hour display, without AM/PM, like the reference
+                text:
+                    ((root.now.getHours() % 12) || 12)
+                    + Qt.formatTime(root.now, ":mm")
+
+                color: "white"
+
+                font.family: root.uiFont
+                font.pixelSize: timeItem.clockPx
+                font.weight: Font.Normal
+                font.letterSpacing: -1.5 * root.u
+
+                renderType: Text.QtRendering
+                visible: false
+            }
+
+            // Raw glyph mask
+            ShaderEffectSource {
+                id: timeMaskRaw
+
+                sourceItem: timeTxt
+                hideSource: true
+                visible: false
+                smooth: true
+
+                sourceRect: Qt.rect(
+                    -timeItem.mp,
+                    -timeItem.mp,
+                    timeTxt.width + 2 * timeItem.mp,
+                    timeTxt.height + 2 * timeItem.mp
+                )
+            }
+
+            // Blur during digit morph
+            MultiEffect {
+                id: timeMaskFx
+
+                width: timeMaskRaw.sourceRect.width
+                height: timeMaskRaw.sourceRect.height
+
+                source: timeMaskRaw
+
+                blurEnabled: true
+                blurMax: 48
+                blur: timeTxt.morphBlur
+
+                autoPaddingEnabled: false
+                visible: false
+            }
+
+            ShaderEffectSource {
+                id: timeMask
+
+                sourceItem: timeMaskFx
+                visible: false
+                smooth: true
+            }
+
+            // Glass height map
+            MultiEffect {
+                id: timeHeightFx
+
+                width: timeMaskFx.width
+                height: timeMaskFx.height
+
+                source: timeMask
+
+                blurEnabled: true
+                blurMax: 16
+
+                blur: Math.max(
+                    0.12,
+                    Math.min(0.6, timeItem.clockPx * 0.04 / 16)
+                )
+
+                autoPaddingEnabled: false
+                visible: false
+            }
+
+            ShaderEffectSource {
+                id: timeHeight
+
+                sourceItem: timeHeightFx
+                visible: false
+                smooth: true
+            }
+
+            // Soft shadow below the digits
+            MultiEffect {
+                x: timeTxt.x - timeItem.mp
+                y: timeTxt.y - timeItem.mp + 8 * root.u
+
+                width: timeMaskFx.width
+                height: timeMaskFx.height
+
+                source: timeMask
+
+                blurEnabled: true
+                blurMax: 64
+                blur: 1.0
+
+                colorization: 1.0
+                colorizationColor: "black"
+                brightness: -1.0
+
+                opacity: 0.22
+            }
+
+            // Actual Liquid Glass refraction
+            ShaderEffect {
+                id: timeGlass
+
+                x: timeTxt.x - timeItem.mp
+                y: timeTxt.y - timeItem.mp
+
+                width: timeMaskFx.width
+                height: timeMaskFx.height
+
+                fragmentShader: Qt.resolvedUrl(
+                    "third_party/maclock/glasstext.frag.qsb"
+                )
+
+                readonly property point fp: {
+                    root.height
+                    clock.x
+                    clock.y
+                    timeItem.x
+                    timeTxt.x
+                    timeTxt.width
+
+                    return timeGlass.mapToItem(root, 0, 0)
+                }
+
+                property variant src: glassTexture
+                property variant mask: timeMask
+                property variant hmap: timeHeight
+
+                property vector2d itemSize:
+                    Qt.vector2d(width, height)
+
+                property vector2d srcSize:
+                    Qt.vector2d(root.width, root.height)
+
+                property vector2d srcOffset:
+                    Qt.vector2d(fp.x, fp.y)
+
+                property real mode: 1.0
+                property real intensity: 0.24
+                property real refract: 8 * root.u
+                property real bevel: 4.5
+
+                property color tint: "#FFFFFFFF"
+
+                property vector2d lightDir:
+                    Qt.vector2d(-0.6, -0.8)
+
+                onStatusChanged: {
+                    if (status === ShaderEffect.Error)
+                        console.warn(
+                            "[MacSDDM] Glass clock shader:",
+                            log
+                        )
+                }
+            }
+
+            // Fallback if the shader cannot load
+            Text {
+                visible: timeGlass.status === ShaderEffect.Error
+
+                anchors.fill: timeTxt
+
+                text: timeTxt.text
+                font: timeTxt.font
+
+                horizontalAlignment: Text.AlignHCenter
+                color: "#DFFFFFFF"
+            }
         }
     }
 
-    // ==========================================
     // LOGIN PROFILE
     // ==========================================
 
@@ -371,7 +574,7 @@ Rectangle {
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 72 * root.u
+        anchors.bottomMargin: 60 * root.u
 
         spacing: 9 * root.u
 
@@ -399,7 +602,7 @@ Rectangle {
         Item {
             id: avatarFrame
 
-            width: 70 * root.u
+            width: 50 * root.u
             height: width
 
             anchors.horizontalCenter: parent.horizontalCenter
@@ -517,7 +720,7 @@ Rectangle {
             color: "#FFFFFF"
 
             font.family: root.uiFont
-            font.pixelSize: 15 * root.u
+            font.pixelSize: 13 * root.u
             font.weight: Font.DemiBold
         }
 
@@ -672,11 +875,11 @@ Rectangle {
 
             width: (
                 passwordInput.text.length > 0 || root.engaged
-                ? 236
-                : 210
+                ? 184
+                : 164
             ) * root.u
 
-            height: 36 * root.u
+            height: 30 * root.u
 
             Behavior on width {
                 NumberAnimation {
@@ -685,7 +888,8 @@ Rectangle {
                 }
             }
 
-            property bool pressed: passwordTap.pressed
+            property bool enterHeld: false
+            property bool pressed: passwordTap.pressed || enterHeld
 
             // Press animation.
             transform: [
@@ -726,7 +930,7 @@ Rectangle {
 
                 cornerR: height / 2
 
-                thickness: 18
+                thickness: 14
                 strength: 1.0
 
                 tint: 0.50
@@ -767,21 +971,22 @@ Rectangle {
                 }
             }
 
-            TapHandler {
-                id: passwordTap
-
-                onPressedChanged: {
-                    if (pressed)
-                        root.poke()
-                }
-            }
-
-            // Real hidden input.
+// Real hidden input.
             TextInput {
                 id: passwordInput
 
+                TapHandler {
+                    id: passwordTap
+                    acceptedButtons: Qt.LeftButton
+
+                    onPressedChanged: {
+                        if (pressed)
+                            root.poke()
+                    }
+                }
+
                 anchors.left: parent.left
-                anchors.leftMargin: 16 * root.u
+                anchors.leftMargin: 12 * root.u
 
                 anchors.right: parent.right
                 anchors.rightMargin: 42 * root.u
@@ -796,10 +1001,16 @@ Rectangle {
 
                 cursorVisible: false
 
+                cursorDelegate: Item {
+                    visible: false
+                    width: 0
+                    height: 0
+                }
+
                 echoMode: TextInput.NoEcho
 
                 font.family: root.uiFont
-                font.pixelSize: 14 * root.u
+                font.pixelSize: 12 * root.u
 
                 verticalAlignment: TextInput.AlignVCenter
 
@@ -819,17 +1030,38 @@ Rectangle {
                 onAccepted: root.startLogin()
 
                 Keys.onPressed: function(event) {
+                    if (
+                        event.key === Qt.Key_Return ||
+                        event.key === Qt.Key_Enter
+                    ) {
+                        passwordBox.enterHeld = true
+                    }
+
                     if (event.key === Qt.Key_Escape) {
                         text = ""
                         event.accepted = true
                     }
+                }
+
+                Keys.onReleased: function(event) {
+                    if (
+                        event.key === Qt.Key_Return ||
+                        event.key === Qt.Key_Enter
+                    ) {
+                        passwordBox.enterHeld = false
+                    }
+                }
+
+                onActiveFocusChanged: {
+                    if (!activeFocus)
+                        passwordBox.enterHeld = false
                 }
             }
 
             // Password placeholder.
             Text {
                 anchors.left: parent.left
-                anchors.leftMargin: 16 * root.u
+                anchors.leftMargin: 12 * root.u
 
                 anchors.verticalCenter: parent.verticalCenter
 
@@ -838,7 +1070,7 @@ Rectangle {
                 color: "#CFFFFFFF"
 
                 font.family: root.uiFont
-                font.pixelSize: 14 * root.u
+                font.pixelSize: 12 * root.u
 
                 opacity:
                     passwordInput.text.length === 0
@@ -1092,12 +1324,11 @@ Rectangle {
             }
         }
 
-        // Error / hint.
-        Text {
+        // Error / hint — MacLock morph animation
+        MorphText {
             anchors.horizontalCenter: parent.horizontalCenter
 
             width: parent.width
-
             horizontalAlignment: Text.AlignHCenter
 
             text:
@@ -1113,6 +1344,8 @@ Rectangle {
             font.family: root.uiFont
             font.pixelSize: 12 * root.u
 
+            duration: 420
+
             opacity:
                 root.engaged || root.errorMessage.length > 0
                 ? 1
@@ -1122,6 +1355,7 @@ Rectangle {
                 NumberAnimation { duration: 300 }
             }
         }
+
     }
 
     // Password failure animation.
@@ -1274,8 +1508,8 @@ Rectangle {
         anchors.rightMargin: 30 * root.u
         anchors.bottomMargin: 28 * root.u
 
-        width: 165 * root.u
-        height: 40 * root.u
+        width: 140 * root.u
+        height: 32 * root.u
 
         model: sessionModel
         textRole: "name"
@@ -1286,7 +1520,7 @@ Rectangle {
             : 0
 
         font.family: root.uiFont
-        font.pixelSize: 12 * root.u
+        font.pixelSize: 11 * root.u
 
         onActivated: root.poke()
 
@@ -1313,8 +1547,8 @@ Rectangle {
         }
 
         contentItem: Text {
-            leftPadding: 14 * root.u
-            rightPadding: 25 * root.u
+            leftPadding: 10 * root.u
+            rightPadding: 20 * root.u
 
             text: sessionPicker.displayText
 
@@ -1331,7 +1565,7 @@ Rectangle {
 
             color: "#DFFFFFFF"
 
-            font.pixelSize: 14 * root.u
+            font.pixelSize: 12 * root.u
 
             x: sessionPicker.width - width - 12 * root.u
             y: (sessionPicker.height - height) / 2
@@ -1346,7 +1580,7 @@ Rectangle {
                 color: "white"
 
                 font.family: root.uiFont
-                font.pixelSize: 12 * root.u
+                font.pixelSize: 11 * root.u
 
                 verticalAlignment: Text.AlignVCenter
                 leftPadding: 10 * root.u
