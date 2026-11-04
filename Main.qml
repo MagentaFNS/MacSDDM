@@ -388,9 +388,9 @@ Rectangle {
 
                 color: "white"
 
-                font.family: root.uiFont
+                font.family: semiboldFont.status === FontLoader.Ready ? semiboldFont.name : root.uiFont
                 font.pixelSize: timeItem.clockPx
-                font.weight: Font.Normal
+                font.weight: Font.Bold
                 font.letterSpacing: -1.5 * root.u
 
                 renderType: Text.QtRendering
@@ -1626,6 +1626,42 @@ Rectangle {
                 currentIndex: sessionPicker.highlightedIndex
             }
         }
+
+        // MacLock-style press / release animation
+        property bool pressAnimating: sessionPress.pressed
+
+        transform: Scale {
+            origin.x: sessionPicker.width / 2
+            origin.y: sessionPicker.height / 2
+
+            xScale: sessionPicker.pressAnimating ? 1.045 : 1.0
+            yScale: sessionPicker.pressAnimating ? 0.86 : 1.0
+
+            Behavior on xScale {
+                NumberAnimation {
+                    duration: sessionPicker.pressAnimating ? 140 : 420
+                    easing.type: Easing.OutQuint
+                }
+            }
+
+            Behavior on yScale {
+                NumberAnimation {
+                    duration: sessionPicker.pressAnimating ? 140 : 420
+                    easing.type: Easing.OutQuint
+                }
+            }
+        }
+
+        TapHandler {
+            id: sessionPress
+            acceptedButtons: Qt.LeftButton
+
+            onPressedChanged: {
+                if (pressed)
+                    root.poke()
+            }
+        }
+
     }
 
     // ==========================================
