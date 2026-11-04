@@ -26,7 +26,7 @@ RED='\033[38;5;203m'
 
 title() {
     clear
-    printf "${BLUE}${BOLD}"
+    printf "${WHITE}${BOLD}"
     cat <<'ART'
  __  __              ____  ____  ____  __  __ 
 |  \/  | __ _  ___  / ___||  _ \|  _ \|  \/  |
