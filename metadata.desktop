@@ -1,0 +1,10 @@
+[SddmGreeterTheme]
+Name=MacSDDM
+Description=A minimalist macOS-inspired SDDM theme with frosted glass blur.
+Author=Magenta
+Copyright=(c) 2026, Magenta
+License=MIT
+Type=sddm-theme
+Version=1.0
+Website=https://github.com/MagentaFNS/MacSDDM
+QtVersion=6
