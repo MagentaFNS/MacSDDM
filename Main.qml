@@ -1,103 +1,85 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 
 Rectangle {
     id: root
     width: 1920
     height: 1080
-    // Глубокий черный фон в стиле MacLock
-    color: "#0b0b10"
+    color: "#000000"
 
-    // 1. СЛОЙ ФОНА (Обои + Размытие + Анимация)
-    Item {
-        id: scene
+    // 1. ФОН (Статичное размытие, чтобы не крашить видеокарту)
+    Image {
+        id: bgImage
+        source: config.background || ""
         anchors.fill: parent
-
-        Image {
-            id: wallpaper
-            anchors.fill: parent
-            source: config.background || ""
-            fillMode: Image.PreserveAspectCrop
-            asynchronous: true
-            visible: false
-        }
-
-        // Имитация эффекта "Liquid Glass" через FastBlur
-        FastBlur {
-            anchors.fill: parent
-            source: wallpaper
-            radius: 80
-            // Плавное появление при загрузке
-            opacity: 0
-            NumberAnimation on opacity {
-                to: 1
-                duration: 1000
-                easing.type: Easing.OutQuint
-                running: true
-            }
-        }
-
-        // Градиентная виньетка для контраста текста
-        Rectangle {
-            anchors.fill: parent
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.4) }
-                GradientStop { position: 0.4; color: Qt.rgba(0, 0, 0, 0.0) }
-                GradientStop { position: 0.7; color: Qt.rgba(0, 0, 0, 0.0) }
-                GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.5) }
-            }
-        }
+        fillMode: Image.PreserveAspectCrop
+        visible: false
     }
 
-    // 2. ЧАСЫ (С эффектом стекла и анимацией)
+    FastBlur {
+        anchors.fill: parent
+        source: bgImage
+        radius: 64 // Фиксированное размытие
+    }
+
+    // Затемнение фона
+    Rectangle {
+        anchors.fill: parent
+        color: "#25000000"
+    }
+
+    // Переменные для каскадной анимации
+    property bool showClock: false
+    property bool showPlayer: false
+    property bool showInput: false
+
+    // Таймеры, запускающие анимации
+    Component.onCompleted: startAnimations.start()
+    Timer {
+        id: startAnimations
+        interval: 100
+        onTriggered: {
+            root.showClock = true
+            timerPlayer.start()
+        }
+    }
+    Timer { id: timerPlayer; interval: 200; onTriggered: { root.showPlayer = true; timerInput.start() } }
+    Timer { id: timerInput; interval: 200; onTriggered: { root.showInput = true } }
+
+    // 2. ЧАСЫ
     Column {
-        id: clockBlock
         anchors.top: parent.top
         anchors.topMargin: 100
         anchors.horizontalCenter: parent.horizontalCenter
-        spacing: 8
-
-        // Плашка под часы (стекло)
-        Rectangle {
-            id: clockGlass
-            width: timeText.width + 60
-            height: timeText.height + dateText.height + 40
-            anchors.centerIn: parent
-            color: Qt.rgba(1, 1, 1, 0.08)
-            radius: 24
-            border.color: Qt.rgba(1, 1, 1, 0.15)
-            border.width: 1
-
-            // Анимация появления
-            opacity: 0
-            scale: 0.9
-            NumberAnimation on opacity { to: 1; duration: 800; easing.type: Easing.OutCubic; running: true }
-            NumberAnimation on scale { to: 1.0; duration: 800; easing.type: Easing.OutCubic; running: true }
+        spacing: 0
+        
+        opacity: root.showClock ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.OutCubic } }
+        transform: Translate {
+            y: root.showClock ? 0 : -30
+            Behavior on y { NumberAnimation { duration: 800; easing.type: Easing.OutCubic } }
         }
 
         Text {
-            id: dateText
             anchors.horizontalCenter: parent.horizontalCenter
             text: Qt.formatDate(new Date(), "dddd, MMMM d")
             color: "white"
-            font.family: "Open Runde" // Или "sans-serif"
-            font.pixelSize: 26
-            font.weight: Font.DemiBold
-            z: 1 // Поверх стекла
+            font.family: "Inter"
+            font.pixelSize: 24
+            font.weight: Font.Medium
+            opacity: 0.9
         }
 
         Text {
             id: timeText
             anchors.horizontalCenter: parent.horizontalCenter
             color: "white"
-            font.family: "Open Runde"
-            font.pixelSize: 120
+            font.family: "Inter"
+            font.pixelSize: 110
             font.weight: Font.Light
             text: Qt.formatTime(new Date(), "hh:mm")
-            z: 1
-
             Timer {
                 interval: 1000; running: true; repeat: true
                 onTriggered: timeText.text = Qt.formatTime(new Date(), "hh:mm")
@@ -105,117 +87,171 @@ Rectangle {
         }
     }
 
-    // 3. БЛОК ВХОДА (Аватар + Пароль)
+    // 3. ЦЕНТРАЛЬНЫЙ БЛОК
     ColumnLayout {
         anchors.centerIn: parent
-        anchors.verticalCenterOffset: 100
-        spacing: 20
+        spacing: 40
 
-        // Аватар с анимацией
+        // --- КАРТОЧКА ПЛЕЕРА ---
         Item {
-            width: 96
-            height: 96
             Layout.alignment: Qt.AlignHCenter
+            width: 280
+            height: 280
+            
+            opacity: root.showPlayer ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.OutCubic } }
+            transform: Translate {
+                y: root.showPlayer ? 0 : 30
+                Behavior on y { NumberAnimation { duration: 800; easing.type: Easing.OutCubic } }
+            }
 
             Image {
-                id: avatarImg
-                source: config.avatar || ""
+                source: config.background || ""
                 anchors.fill: parent
                 fillMode: Image.PreserveAspectCrop
                 layer.enabled: true
                 layer.effect: OpacityMask {
-                    maskSource: Rectangle { width: 96; height: 96; radius: 48 }
+                    maskSource: Rectangle { width: 280; height: 280; radius: 16 }
+                }
+            }
+            
+            Rectangle {
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 80
+                color: Qt.rgba(0.1, 0.1, 0.1, 0.6)
+                radius: 16
+                
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 4
+                    Text { text: "I Don't Know - Radio Mix"; color: "white"; font.family: "Inter"; font.pixelSize: 14; font.weight: Font.DemiBold; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { text: "Erika"; color: "#aaaaaa"; font.family: "Inter"; font.pixelSize: 12; anchors.horizontalCenter: parent.horizontalCenter }
+                }
+            }
+        }
+
+        // --- БЛОК АВАТАРА И ПАРОЛЯ ---
+        ColumnLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 20
+            
+            opacity: root.showInput ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.OutCubic } }
+            transform: Translate {
+                y: root.showInput ? 0 : 30
+                Behavior on y { NumberAnimation { duration: 800; easing.type: Easing.OutCubic } }
+            }
+
+            // Аватарка (Убрал DropShadow, чтобы не было краша)
+            Item {
+                Layout.alignment: Qt.AlignHCenter
+                width: 88
+                height: 88
+                
+                Image {
+                    id: avatarImg
+                    source: config.avatar || ""
+                    anchors.fill: parent
+                    fillMode: Image.PreserveAspectCrop
+                    layer.enabled: true
+                    layer.effect: OpacityMask {
+                        maskSource: Rectangle { width: 88; height: 88; radius: 44 }
+                    }
                 }
             }
 
-            // Плавное появление
-            opacity: 0
-            NumberAnimation on opacity {
-                to: 1
-                duration: 800
-                easing.type: Easing.OutCubic
-                running: true
-            }
-        }
-
-        Text {
-            text: userModel.lastUser
-            color: "white"
-            font.family: "Open Runde"
-            font.pixelSize: 20
-            font.weight: Font.Medium
-            Layout.alignment: Qt.AlignHCenter
-        }
-
-        // Поле пароля (в виде пилюли)
-        TextField {
-            id: passwordInput
-            Layout.preferredWidth: 280
-            Layout.preferredHeight: 44
-            Layout.alignment: Qt.AlignHCenter
-            placeholderText: "Enter Password"
-            placeholderTextColor: "#99ffffff"
-            echoMode: TextInput.Password
-            color: "white"
-            font.family: "Open Runde"
-            font.pixelSize: 16
-            horizontalAlignment: TextInput.AlignHCenter
-            focus: true
-
-            background: Rectangle {
-                color: Qt.rgba(1, 1, 1, 0.12)
-                radius: 22
-                border.color: passwordInput.activeFocus ? Qt.rgba(1, 1, 1, 0.6) : Qt.rgba(1, 1, 1, 0.2)
-                border.width: 1
+            // Имя
+            Text {
+                text: userModel.lastUser
+                color: "white"
+                font.family: "Inter"
+                font.pixelSize: 18
+                font.weight: Font.Medium
+                Layout.alignment: Qt.AlignHCenter
             }
 
-            onAccepted: {
-                sddm.login(userModel.lastUser, passwordInput.text, sessionModel.lastIndex)
+            // Поле пароля
+            Item {
+                Layout.alignment: Qt.AlignHCenter
+                width: 260
+                height: 42
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: Qt.rgba(1, 1, 1, 0.15)
+                    radius: 21
+                    border.color: Qt.rgba(1, 1, 1, 0.3)
+                    border.width: 1
+                }
+
+                TextField {
+                    id: passwordInput
+                    anchors.fill: parent
+                    placeholderText: "Enter Password"
+                    placeholderTextColor: Qt.rgba(1, 1, 1, 0.6)
+                    echoMode: TextInput.Password
+                    color: "white"
+                    font.family: "Inter"
+                    font.pixelSize: 15
+                    horizontalAlignment: TextInput.AlignHCenter
+                    background: Item {}
+                    focus: true
+
+                    onAccepted: {
+                        sddm.login(userModel.lastUser, passwordInput.text, sessionCombo.currentIndex)
+                    }
+                }
             }
-        }
 
-        // Текст ошибки
-        Text {
-            id: errorMsg
-            text: ""
-            color: "#ff453a"
-            font.pixelSize: 14
-            Layout.alignment: Qt.AlignHCenter
-        }
+            // Подсказка
+            Text {
+                text: "Enter your password to unlock"
+                color: Qt.rgba(1, 1, 1, 0.5)
+                font.family: "Inter"
+                font.pixelSize: 11
+                Layout.alignment: Qt.AlignHCenter
+            }
 
-        Connections {
-            target: sddm
-            function onLoginFailed() {
-                errorMsg.text = "Incorrect Password"
-                passwordInput.text = ""
-                passwordInput.forceActiveFocus()
+            // Ошибка
+            Text {
+                id: errorMsg
+                text: ""
+                color: "#ff453a"
+                font.family: "Inter"
+                font.pixelSize: 13
+                Layout.alignment: Qt.AlignHCenter
             }
         }
     }
 
-    // 4. ПЕРЕКЛЮЧАТЕЛЬ СЕССИЙ (Правый нижний угол)
+    // 4. ПЕРЕКЛЮЧАТЕЛЬ СЕССИЙ
     ComboBox {
         id: sessionCombo
         anchors.bottom: parent.bottom
         anchors.right: parent.right
         anchors.margins: 40
-        width: 200
-        height: 38
+        width: 180
+        height: 36
         model: sessionModel
         currentIndex: sessionModel.lastIndex
+        
+        opacity: root.showInput ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.OutCubic } }
 
         background: Rectangle {
-            color: Qt.rgba(1, 1, 1, 0.12)
+            color: Qt.rgba(1, 1, 1, 0.1)
             radius: 10
             border.color: Qt.rgba(1, 1, 1, 0.2)
             border.width: 1
         }
 
         contentItem: Text {
-            leftPadding: 14
-            text: sessionCombo.displayText
-            font.family: "Open Runde"
-            font.pixelSize: 13
+            leftPadding: 12
+            text: sessionCombo.displayText || ""
+            font.family: "Inter"
+            font.pixelSize: 12
             color: "white"
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
@@ -226,16 +262,17 @@ Rectangle {
             y: (sessionCombo.height - height) / 2
             text: "⌄"
             color: "white"
-            font.pixelSize: 18
+            font.pixelSize: 16
         }
 
         delegate: ItemDelegate {
             width: sessionCombo.width
-            height: 34
+            height: 32
             contentItem: Text {
-                text: model.display
+                text: model.name || model.display || ""
                 color: "white"
-                font.pixelSize: 13
+                font.family: "Inter"
+                font.pixelSize: 12
                 verticalAlignment: Text.AlignVCenter
                 leftPadding: 10
             }
@@ -267,20 +304,23 @@ Rectangle {
         anchors.left: parent.left
         anchors.margins: 40
         spacing: 24
+        
+        opacity: root.showInput ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.OutCubic } }
 
         Button {
             text: "⏻"
-            font.pixelSize: 24
+            font.pixelSize: 22
             onClicked: sddm.powerOff()
             background: Item {}
-            contentItem: Text { text: parent.text; color: "white"; font: parent.font; opacity: parent.hovered ? 1 : 0.6 }
+            contentItem: Text { text: parent.text; color: "white"; opacity: parent.hovered ? 1 : 0.5; font: parent.font }
         }
         Button {
             text: "↻"
-            font.pixelSize: 24
+            font.pixelSize: 22
             onClicked: sddm.reboot()
             background: Item {}
-            contentItem: Text { text: parent.text; color: "white"; font: parent.font; opacity: parent.hovered ? 1 : 0.6 }
+            contentItem: Text { text: parent.text; color: "white"; opacity: parent.hovered ? 1 : 0.5; font: parent.font }
         }
     }
 }
