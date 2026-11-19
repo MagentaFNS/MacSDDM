@@ -297,7 +297,7 @@ Rectangle {
     Item {
         id: clock
 
-        y: (root.shown ? 0.075 : 0.035) * root.height
+        y: (root.shown ? 0.085 : 0.045) * root.height
 
         anchors.horizontalCenter: parent.horizontalCenter
 
@@ -336,17 +336,17 @@ Rectangle {
                 config.dateFormat || "dddd, MMMM d"
             )
 
-            color: "#EFFFFFFF"
+            color: "#A8DDE4ED"
 
             font.family: root.uiFont
-            font.pixelSize: 17 * root.u
+            font.pixelSize: 18 * root.u
             font.weight: Font.Medium
 
             layer.enabled: true
             layer.effect: MultiEffect {
                 shadowEnabled: true
                 shadowBlur: 0.6
-                shadowOpacity: 0.25
+                shadowOpacity: 0.16
                 shadowVerticalOffset: 1
             }
         }
@@ -356,10 +356,10 @@ Rectangle {
             id: timeItem
 
             anchors.top: dateTxt.bottom
-            anchors.topMargin: -14 * root.u
+            anchors.topMargin: -9 * root.u
             anchors.horizontalCenter: parent.horizontalCenter
 
-            readonly property real clockPx: 138 * root.u
+            readonly property real clockPx: 120 * root.u
             readonly property real mp:
                 Math.max(48 * root.u, clockPx * 0.5)
 
@@ -528,11 +528,11 @@ Rectangle {
                     Qt.vector2d(fp.x, fp.y)
 
                 property real mode: 1.0
-                property real intensity: 0.24
-                property real refract: 8 * root.u
+                property real intensity: 0.38
+                property real refract: 9 * root.u
                 property real bevel: 4.5
 
-                property color tint: "#FFFFFFFF"
+                property color tint: "#DCE5F0"
 
                 property vector2d lightDir:
                     Qt.vector2d(-0.6, -0.8)
@@ -931,11 +931,11 @@ Rectangle {
                 cornerR: height / 2
 
                 thickness: 14
-                strength: 1.0
+                strength: 0.82
 
-                tint: 0.50
-                rim: 0.55
-                shadowAmt: 0.4
+                tint: 0.15
+                rim: 0.22
+                shadowAmt: 0.20
             }
 
             // Hover border glow.
@@ -946,13 +946,13 @@ Rectangle {
 
                 color: "transparent"
 
-                border.width: 1.3
-                border.color: "#EFFFFFFF"
+                border.width: 0.9
+                border.color: "#88DDE6F2"
 
                 opacity:
                     passwordHover.hovered || passwordBox.pressed
-                    ? 0.65
-                    : 0.12
+                    ? 0.30
+                    : 0.06
 
                 Behavior on opacity {
                     NumberAnimation {
@@ -1399,102 +1399,10 @@ Rectangle {
     }
 
     // ==========================================
-    // POWER CONTROLS
-    // ==========================================
-
-    Row {
-        anchors.left: parent.left
-        anchors.bottom: parent.bottom
-
-        anchors.leftMargin: 30 * root.u
-        anchors.bottomMargin: 28 * root.u
-
-        spacing: 10 * root.u
-
-        opacity: root.shown ? 1 : 0
-
-        Repeater {
-            model: [
-                { glyph: "⏻", action: "power" },
-                { glyph: "↻", action: "reboot" }
-            ]
-
-            delegate: Item {
-                id: powerItem
-
-                width: 40 * root.u
-                height: width
-
-                visible:
-                    modelData.action === "power"
-                    ? sddm.canPowerOff
-                    : sddm.canReboot
-
-                scale:
-                    powerMouse.pressed ? 0.90
-                    : powerMouse.containsMouse ? 1.06
-                    : 1.0
-
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: 260
-                        easing.type: Easing.OutQuint
-                    }
-                }
-
-                GlassPill {
-                    anchors.fill: parent
-
-                    src: glassTexture
-                    frame: root
-
-                    cornerR: width / 2
-
-                    thickness: 12
-                    strength: 0.7
-
-                    tint: 0.18
-                    rim: 0.5
-                    shadowAmt: 0.25
-                }
-
-                Text {
-                    anchors.centerIn: parent
-
-                    text: modelData.glyph
-
-                    color: "white"
-
-                    font.family: root.uiFont
-                    font.pixelSize: 19 * root.u
-                }
-
-                MouseArea {
-                    id: powerMouse
-
-                    anchors.fill: parent
-
-                    hoverEnabled: true
-
-                    cursorShape: Qt.PointingHandCursor
-
-                    onEntered: root.poke()
-
-                    onClicked: {
-                        root.poke()
-
-                        if (modelData.action === "power")
-                            sddm.powerOff()
-                        else
-                            sddm.reboot()
-                    }
-                }
-            }
-        }
-    }
+    // Power controls removed for minimal lock screen.
 
     // ==========================================
-    // SESSION SELECTOR
+    // COMPACT MACOS-STYLE SESSION SWITCHER
     // ==========================================
 
     ComboBox {
@@ -1505,11 +1413,11 @@ Rectangle {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
 
-        anchors.rightMargin: 30 * root.u
-        anchors.bottomMargin: 28 * root.u
+        anchors.rightMargin: 26 * root.u
+        anchors.bottomMargin: 24 * root.u
 
-        width: 140 * root.u
-        height: 32 * root.u
+        width: 38 * root.u
+        height: 38 * root.u
 
         model: sessionModel
         textRole: "name"
@@ -1520,136 +1428,282 @@ Rectangle {
             : 0
 
         font.family: root.uiFont
-        font.pixelSize: 11 * root.u
+        font.pixelSize: 12 * root.u
 
         onActivated: root.poke()
 
-        opacity: root.shown ? 1 : 0
+        opacity:
+            root.shown
+            ? (sessionHover.hovered ? 1.0 : 0.58)
+            : 0.0
 
         Behavior on opacity {
-            NumberAnimation { duration: 700 }
+            NumberAnimation {
+                duration: 250
+                easing.type: Easing.OutCubic
+            }
         }
 
+        // Small circular Liquid Glass surface.
         background: GlassPill {
             anchors.fill: parent
 
             src: glassTexture
             frame: root
 
-            cornerR: height / 2
+            cornerR: width / 2
 
-            thickness: 12
-            strength: 0.8
+            thickness: 8
+            strength: 0.70
 
             tint: 0.20
-            rim: 0.5
-            shadowAmt: 0.3
+            rim: 0.22
+            shadowAmt: 0.20
         }
 
-        contentItem: Text {
-            leftPadding: 10 * root.u
-            rightPadding: 20 * root.u
+        // Minimal monochrome monitor icon.
+        contentItem: Item {
+            anchors.fill: parent
 
-            text: sessionPicker.displayText
+            Rectangle {
+                id: monitorDisplay
 
-            color: "white"
+                width: 16 * root.u
+                height: 11 * root.u
 
-            font: sessionPicker.font
+                radius: 2 * root.u
 
-            verticalAlignment: Text.AlignVCenter
-            elide: Text.ElideRight
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.verticalCenterOffset: -2 * root.u
+
+                color: "transparent"
+
+                border.width: 1.2 * root.u
+                border.color:
+                    sessionHover.hovered
+                    ? "#F5FFFFFF"
+                    : "#C8FFFFFF"
+            }
+
+            Rectangle {
+                width: 1.3 * root.u
+                height: 2.5 * root.u
+
+                anchors.horizontalCenter: monitorDisplay.horizontalCenter
+                anchors.top: monitorDisplay.bottom
+                anchors.topMargin: 0.5 * root.u
+
+                color: monitorDisplay.border.color
+            }
+
+            Rectangle {
+                width: 8 * root.u
+                height: 1.2 * root.u
+
+                anchors.horizontalCenter: monitorDisplay.horizontalCenter
+                anchors.top: monitorDisplay.bottom
+                anchors.topMargin: 3 * root.u
+
+                radius: 1 * root.u
+                color: monitorDisplay.border.color
+            }
         }
 
-        indicator: Text {
-            text: "⌄"
-
-            color: "#DFFFFFFF"
-
-            font.pixelSize: 12 * root.u
-
-            x: sessionPicker.width - width - 12 * root.u
-            y: (sessionPicker.height - height) / 2
+        // No text label or arrow in the closed state.
+        indicator: Item {
+            implicitWidth: 0
+            implicitHeight: 0
         }
 
         delegate: ItemDelegate {
-            width: sessionPicker.width
+            width: sessionPicker.popup.width - 12 * root.u
+            height: 38 * root.u
+            padding: 0
 
-            contentItem: Text {
-                text: model.name || ""
+            contentItem: Item {
+                Text {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 12 * root.u
+                    anchors.right: selectedMark.left
+                    anchors.rightMargin: 5 * root.u
+                    anchors.verticalCenter: parent.verticalCenter
 
-                color: "white"
+                    text: model.name || ""
 
-                font.family: root.uiFont
-                font.pixelSize: 11 * root.u
+                    color: "#E8EDF3"
 
-                verticalAlignment: Text.AlignVCenter
-                leftPadding: 10 * root.u
+                    font.family: root.uiFont
+                    font.pixelSize: 12 * root.u
+
+                    elide: Text.ElideRight
+                }
+
+                Text {
+                    id: selectedMark
+
+                    anchors.right: parent.right
+                    anchors.rightMargin: 12 * root.u
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    text: index === sessionPicker.currentIndex ? "✓" : ""
+
+                    color: "#E5FFFFFF"
+                    font.pixelSize: 13 * root.u
+                }
             }
 
             background: Rectangle {
-                radius: 8
+                radius: 9 * root.u
 
                 color: highlighted
-                       ? "#45FFFFFF"
-                       : "transparent"
+                    ? "#27FFFFFF"
+                    : "transparent"
             }
         }
 
+        // Compact dark glass popup opens above the icon.
         popup: Popup {
-            y: sessionPicker.height + 5 * root.u
+            id: sessionPopup
 
-            width: sessionPicker.width
+            transformOrigin: Popup.BottomRight
+            // Smooth upward fly-out.
+            enter: Transition {
+                ParallelAnimation {
+                    NumberAnimation {
+                        property: "opacity"
+                        from: 0.0
+                        to: 1.0
+                        duration: 190
+                        easing.type: Easing.OutCubic
+                    }
+                    NumberAnimation {
+                        property: "y"
+                        from: -sessionPopup.height + 12 * root.u
+                        to: -sessionPopup.height - 8 * root.u
+                        duration: 280
+                        easing.type: Easing.OutCubic
+                    }
+                    NumberAnimation {
+                        property: "scale"
+                        from: 0.93
+                        to: 1.0
+                        duration: 320
+                        easing.type: Easing.OutBack
+                        easing.overshoot: 1.08
+                    }
+                }
+            }
+
+            // Reverse motion when closing.
+            exit: Transition {
+                ParallelAnimation {
+                    NumberAnimation {
+                        property: "opacity"
+                        from: 1.0
+                        to: 0.0
+                        duration: 140
+                        easing.type: Easing.InCubic
+                    }
+                    NumberAnimation {
+                        property: "y"
+                        from: -sessionPopup.height - 8 * root.u
+                        to: -sessionPopup.height + 12 * root.u
+                        duration: 165
+                        easing.type: Easing.InCubic
+                    }
+                    NumberAnimation {
+                        property: "scale"
+                        from: 1.0
+                        to: 0.96
+                        duration: 165
+                        easing.type: Easing.InCubic
+                    }
+                }
+            }
+
+            x: sessionPicker.width - width
+            y: -height - 8 * root.u
+
+            width: 184 * root.u
 
             padding: 6 * root.u
 
-            background: Rectangle {
-                color: "#E51B1C22"
+            background: Item {
+                GlassPill {
+                    anchors.fill: parent
 
-                radius: 14 * root.u
+                    src: glassTexture
+                    frame: root
 
-                border.width: 1
-                border.color: "#40FFFFFF"
+                    cornerR: 16 * root.u
+
+                    thickness: 12
+                    strength: 0.78
+
+                    tint: 0.27
+                    rim: 0.28
+                    shadowAmt: 0.30
+
+                    dark: true
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+
+                    radius: 16 * root.u
+                    color: "transparent"
+
+                    border.width: 1
+                    border.color: "#35FFFFFF"
+                }
             }
 
             contentItem: ListView {
                 clip: true
+                spacing: 2 * root.u
 
                 implicitHeight: Math.min(
                     contentHeight,
-                    200 * root.u
+                    220 * root.u
                 )
 
                 model: sessionPicker.popup.visible
-                       ? sessionPicker.delegateModel
-                       : null
+                    ? sessionPicker.delegateModel
+                    : null
 
                 currentIndex: sessionPicker.highlightedIndex
             }
         }
 
-        // MacLock-style press / release animation
+        // Subtle press animation.
         property bool pressAnimating: sessionPress.pressed
 
         transform: Scale {
             origin.x: sessionPicker.width / 2
             origin.y: sessionPicker.height / 2
 
-            xScale: sessionPicker.pressAnimating ? 1.045 : 1.0
-            yScale: sessionPicker.pressAnimating ? 0.86 : 1.0
+            xScale: sessionPicker.pressAnimating ? 0.94 : 1.0
+            yScale: sessionPicker.pressAnimating ? 0.94 : 1.0
 
             Behavior on xScale {
                 NumberAnimation {
-                    duration: sessionPicker.pressAnimating ? 140 : 420
+                    duration: 220
                     easing.type: Easing.OutQuint
                 }
             }
 
             Behavior on yScale {
                 NumberAnimation {
-                    duration: sessionPicker.pressAnimating ? 140 : 420
+                    duration: 220
                     easing.type: Easing.OutQuint
                 }
             }
+        }
+
+        HoverHandler {
+            id: sessionHover
+            cursorShape: Qt.PointingHandCursor
         }
 
         TapHandler {
@@ -1661,10 +1715,8 @@ Rectangle {
                     root.poke()
             }
         }
-
     }
 
-    // ==========================================
     // GLOBAL POINTER TRACKER
     // ==========================================
 
