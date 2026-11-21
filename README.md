@@ -18,7 +18,7 @@
   <img src="assets/photo/image.png" alt="MacSDDM login screen preview" width="100%">
 </p>
 
-<p align="center"><sub>MacSDDM running with the custom monochrome wallpaper and Liquid Glass interface.</sub></p>
+<p align="center"><sub>MacSDDM and Liquid Glass interface.</sub></p>
 
 ## Installation
 
@@ -42,7 +42,7 @@ chmod +x install.sh
 The installer opens an interactive menu. Choose **2 — Install and activate** to install MacSDDM and set it as the current SDDM theme.
 
 <p align="center">
-  <img src="assets/photo/image%20copy.png" alt="MacSDDM installation script running in a terminal" width="100%">
+  <img src="assets/photo/image%20copy 2.png" alt="MacSDDM installation script running in a terminal" width="100%">
 </p>
 
 <p align="center"><sub>Installing MacSDDM with the included <code>./install.sh</code> script.</sub></p>

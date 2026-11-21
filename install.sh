@@ -196,6 +196,26 @@ change_asset() {
     install_theme yes
 }
 
+
+edit_theme_config() {
+    printf "\n${BLUE}Opening appearance settings...${RESET}\n"
+
+    if command -v kate >/dev/null 2>&1; then
+        kate --block "$ROOT/theme.conf"
+    elif command -v nano >/dev/null 2>&1; then
+        nano "$ROOT/theme.conf"
+    elif command -v micro >/dev/null 2>&1; then
+        micro "$ROOT/theme.conf"
+    elif command -v vi >/dev/null 2>&1; then
+        vi "$ROOT/theme.conf"
+    else
+        printf "${RED}No supported text editor found.${RESET}\n"
+        return 1
+    fi
+
+    printf "${GREEN}Appearance settings saved.${RESET}\n"
+}
+
 uninstall_theme() {
     if [[ -f "$STATE" ]]; then
         restore
@@ -218,6 +238,7 @@ menu() {
         printf "  ${WHITE}5${RESET}  Change wallpaper\n"
         printf "  ${WHITE}6${RESET}  Restore previous version\n"
         printf "  ${WHITE}7${RESET}  Uninstall MacSDDM\n"
+        printf "  ${WHITE}8${RESET}  Edit appearance settings\n"
         printf "  ${WHITE}0${RESET}  Exit\n\n"
 
         printf "${GRAY}  Select action: ${RESET}"
@@ -231,6 +252,7 @@ menu() {
             5) change_asset wallpaper ;;
             6) restore ;;
             7) uninstall_theme ;;
+            8) edit_theme_config ;;
             0) exit 0 ;;
             *) printf "${RED}Unknown option.${RESET}\n" ;;
         esac
@@ -241,6 +263,9 @@ menu() {
 }
 
 case "${1:-}" in
+    --config)
+        edit_theme_config
+        ;;
     --preview)
         preview
         ;;

@@ -18,12 +18,14 @@ Rectangle {
     // ==========================================
 
     readonly property real u:
-        Math.max(0.70, Math.min(1.15, height / 930))
+        Math.max(0.6, height / 1200)
 
     readonly property string uiFont:
-        regularFont.status === FontLoader.Ready
-        ? regularFont.name
-        : "Inter"
+        config.font && config.font.length > 0
+        ? config.font
+        : regularFont.status === FontLoader.Ready
+          ? regularFont.name
+          : "Inter"
 
     readonly property string currentUser:
         userModel.count > 1
@@ -45,6 +47,27 @@ Rectangle {
     property bool busy: false
 
     property string errorMessage: ""
+
+    // Theme configuration helpers.
+    function settingNumber(value, fallback) {
+        if (value === undefined || value === null || value === "")
+            return fallback
+
+        var n = Number(value)
+        return isFinite(n) ? n : fallback
+    }
+
+    function settingBool(value, fallback) {
+        if (value === undefined || value === null || value === "")
+            return fallback
+
+        var v = String(value).toLowerCase()
+        return v === "true" || v === "1" ||
+               v === "yes" || v === "on"
+    }
+
+    readonly property bool clockGlassEnabled:
+        settingBool(config.clockGlass, true)
 
     FontLoader {
         id: regularFont
@@ -198,13 +221,13 @@ Rectangle {
             mipmap: true
 
             sourceSize.width:
-                Math.min(root.width * 1.1, 2560)
+                Math.max(1, Math.min(root.width * 1.15, 2560))
 
-            scale: root.shown ? 1.0 : 1.055
+            scale: root.shown ? 1.0 : 1.09
 
             Behavior on scale {
                 NumberAnimation {
-                    duration: 750
+                    duration: 650
                     easing.type: Easing.OutQuint
                 }
             }
@@ -230,7 +253,10 @@ Rectangle {
             blurEnabled: true
             blurMax: 48
 
-            blur: root.engaged ? 0.55 : 0.0
+            blur: root.engaged
+                ? Math.max(0.0, Math.min(1.0,
+                    root.settingNumber(config.backgroundBlur, 0.12)))
+                : 0.0
 
             opacity: root.engaged ? 1 : 0
 
@@ -297,7 +323,7 @@ Rectangle {
     Item {
         id: clock
 
-        y: (root.shown ? 0.085 : 0.045) * root.height
+        y: (root.shown ? 0.075 : 0.035) * root.height
 
         anchors.horizontalCenter: parent.horizontalCenter
 
@@ -336,18 +362,30 @@ Rectangle {
                 config.dateFormat || "dddd, MMMM d"
             )
 
-            color: "#A8DDE4ED"
+            color: Qt.color(config.dateColor || "#E8EEF6")
+            opacity: Math.max(0.0, Math.min(1.0,
+                root.settingNumber(config.dateOpacity, 1.0)))
 
-            font.family: root.uiFont
-            font.pixelSize: 18 * root.u
-            font.weight: Font.Medium
+            font.family:
+                config.dateFont && config.dateFont.length > 0
+                ? config.dateFont
+                : root.uiFont
+
+            font.pixelSize:
+                root.settingNumber(config.dateSize, 18) * root.u
+
+            font.weight: Math.round(Math.max(
+                100,
+                Math.min(900, root.settingNumber(config.dateWeight, 500))
+            ))
 
             layer.enabled: true
             layer.effect: MultiEffect {
                 shadowEnabled: true
-                shadowBlur: 0.6
-                shadowOpacity: 0.16
-                shadowVerticalOffset: 1
+                shadowColor: "#99000000"
+                shadowBlur: 0.55
+                shadowOpacity: 0.30
+                shadowVerticalOffset: 1.5
             }
         }
 
@@ -356,14 +394,14 @@ Rectangle {
             id: timeItem
 
             anchors.top: dateTxt.bottom
-            anchors.topMargin: -9 * root.u
+            anchors.topMargin: -14 * root.u
             anchors.horizontalCenter: parent.horizontalCenter
 
-            readonly property real clockPx: 120 * root.u
+            readonly property real clockPx: root.settingNumber(config.clockSize, 120) * root.u
             readonly property real mp:
                 Math.max(48 * root.u, clockPx * 0.5)
 
-            width: timeTxt.implicitWidth + 40 * root.u
+            width: timeTxt.implicitWidth + 40
             height: timeTxt.implicitHeight
 
             // MorphText is the hidden text mask.
@@ -381,16 +419,29 @@ Rectangle {
                 scaleIn: 1.03
                 scaleOut: 0.97
 
-                // 12-hour display, without AM/PM, like the reference
-                text:
-                    ((root.now.getHours() % 12) || 12)
-                    + Qt.formatTime(root.now, ":mm")
+                // Configurable 12/24-hour clock.
+                // Strip AM/PM suffix for the minimalist lock-screen style.
+                text: Qt.formatTime(
+                    root.now,
+                    config.timeFormat || "h:mm ap"
+                ).replace(/\s*(am|pm)$/i, "")
 
                 color: "white"
 
-                font.family: semiboldFont.status === FontLoader.Ready ? semiboldFont.name : root.uiFont
+                font.family:
+                    config.clockFont === "auto"
+                    ? (Qt.fontFamilies().indexOf("Nunito") >= 0
+                       ? "Nunito" : "Open Runde")
+                    : (config.clockFont && config.clockFont.length > 0
+                       ? config.clockFont : root.uiFont)
+
                 font.pixelSize: timeItem.clockPx
-                font.weight: Font.Bold
+
+                font.weight: Math.round(Math.max(
+                    100,
+                    Math.min(900, root.settingNumber(config.clockWeight, 800))
+                ))
+
                 font.letterSpacing: -1.5 * root.u
 
                 renderType: Text.QtRendering
@@ -493,6 +544,10 @@ Rectangle {
             ShaderEffect {
                 id: timeGlass
 
+                visible: root.clockGlassEnabled
+                opacity: Math.max(0.0, Math.min(1.0,
+                    root.settingNumber(config.clockOpacity, 1.0)))
+
                 x: timeTxt.x - timeItem.mp
                 y: timeTxt.y - timeItem.mp
 
@@ -528,11 +583,17 @@ Rectangle {
                     Qt.vector2d(fp.x, fp.y)
 
                 property real mode: 1.0
-                property real intensity: 0.38
-                property real refract: 9 * root.u
+                property real intensity: Math.max(
+                    0.0,
+                    Math.min(1.0, root.settingNumber(config.glassIntensity, 0.38))
+                )
+                property real refract:
+                    Math.max(0.0, Math.min(100.0,
+                        root.settingNumber(config.glassRefraction, 13)
+                    )) * root.u
                 property real bevel: 4.5
 
-                property color tint: "#DCE5F0"
+                property color tint: Qt.color(config.glassTint || "#DCE5F0")
 
                 property vector2d lightDir:
                     Qt.vector2d(-0.6, -0.8)
@@ -546,18 +607,32 @@ Rectangle {
                 }
             }
 
-            // Fallback if the shader cannot load
+            // Normal text mode when Liquid Glass is disabled.
             Text {
-                visible: timeGlass.status === ShaderEffect.Error
+                id: plainClock
+
+                visible: !root.clockGlassEnabled
+                z: 3
 
                 anchors.fill: timeTxt
 
                 text: timeTxt.text
                 font: timeTxt.font
 
+                color: Qt.color(config.clockColor || "#FFFFFF")
+                opacity: Math.max(0.0, Math.min(1.0,
+                    root.settingNumber(config.clockOpacity, 1.0)))
+
                 horizontalAlignment: Text.AlignHCenter
-                color: "#DFFFFFFF"
+                verticalAlignment: Text.AlignVCenter
+
+                renderType: Text.NativeRendering
+
+                style: Text.Outline
+                styleColor: "#55000000"
             }
+
+
         }
     }
 
@@ -573,26 +648,23 @@ Rectangle {
         )
 
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 60 * root.u
+        y: root.height - height - (root.shown ? 78 : 30) * root.u
 
-        spacing: 9 * root.u
+        spacing: 10 * root.u
 
         opacity: root.shown ? 1 : 0
 
-        transform: Translate {
-            y: root.shown ? 0 : 20 * root.u
-
-            Behavior on y {
-                NumberAnimation {
-                    duration: 750
-                    easing.type: Easing.OutQuint
-                }
+        Behavior on y {
+            NumberAnimation {
+                duration: root.shown ? 650 : 380
+                easing.type: Easing.OutQuint
             }
         }
 
+
+
         Behavior on opacity {
-            NumberAnimation { duration: 750 }
+            NumberAnimation { duration: 650 }
         }
 
         // ======================================
@@ -602,7 +674,7 @@ Rectangle {
         Item {
             id: avatarFrame
 
-            width: 50 * root.u
+            width: 70 * root.u
             height: width
 
             anchors.horizontalCenter: parent.horizontalCenter
@@ -702,7 +774,7 @@ Rectangle {
                 color: "transparent"
 
                 border.width: 1
-                border.color: "#48FFFFFF"
+                border.color: Qt.rgba(1, 1, 1, 0.22)
             }
         }
 
@@ -720,7 +792,7 @@ Rectangle {
             color: "#FFFFFF"
 
             font.family: root.uiFont
-            font.pixelSize: 13 * root.u
+            font.pixelSize: 15 * root.u
             font.weight: Font.DemiBold
         }
 
@@ -875,11 +947,11 @@ Rectangle {
 
             width: (
                 passwordInput.text.length > 0 || root.engaged
-                ? 184
-                : 164
+                ? 236
+                : 210
             ) * root.u
 
-            height: 30 * root.u
+            height: 36 * root.u
 
             Behavior on width {
                 NumberAnimation {
@@ -930,11 +1002,23 @@ Rectangle {
 
                 cornerR: height / 2
 
-                thickness: 14
-                strength: 0.82
+                glassEnabled: root.settingBool(config.passwordGlass, true)
 
-                tint: 0.15
-                rim: 0.22
+                opacity: Math.max(0.0, Math.min(1.0,
+                    root.settingNumber(config.passwordOpacity, 1.0)))
+
+                fallbackColor: Qt.color(
+                    config.passwordFallbackColor || "#1F2028"
+                )
+
+                fallbackOpacity: Math.max(0.0, Math.min(1.0,
+                    root.settingNumber(config.passwordFallbackOpacity, 0.48)
+                ))
+
+                thickness: root.settingNumber(config.passwordThickness, 14)
+                strength: root.settingNumber(config.passwordStrength, 0.82)
+                tint: root.settingNumber(config.passwordTint, 0.08)
+                rim: root.settingNumber(config.passwordRim, 0.22)
                 shadowAmt: 0.20
             }
 
@@ -1010,7 +1094,7 @@ Rectangle {
                 echoMode: TextInput.NoEcho
 
                 font.family: root.uiFont
-                font.pixelSize: 12 * root.u
+                font.pixelSize: 13 * root.u
 
                 verticalAlignment: TextInput.AlignVCenter
 
@@ -1067,10 +1151,10 @@ Rectangle {
 
                 text: qsTr("Enter Password")
 
-                color: "#CFFFFFFF"
+                color: Qt.rgba(1, 1, 1, 0.62)
 
                 font.family: root.uiFont
-                font.pixelSize: 12 * root.u
+                font.pixelSize: 14 * root.u
 
                 opacity:
                     passwordInput.text.length === 0

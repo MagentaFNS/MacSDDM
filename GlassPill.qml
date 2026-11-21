@@ -17,6 +17,10 @@ Item {
     property real shadowAmt: 0.5
     property bool dark: false
 
+    property bool glassEnabled: true
+    property color fallbackColor: "#1F2028"
+    property real fallbackOpacity: 0.48
+
     readonly property real pad: 10
     readonly property bool failed:
         fx.status === ShaderEffect.Error
@@ -41,11 +45,12 @@ Item {
     Rectangle {
         anchors.fill: parent
 
-        visible: gg.failed || !gg.src || !gg.frame
+        visible: !gg.glassEnabled || gg.failed || !gg.src || !gg.frame
 
         radius: gg.cornerR
 
-        color: Qt.rgba(0.12, 0.12, 0.14, 0.48)
+        color: gg.fallbackColor
+        opacity: gg.fallbackOpacity
 
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.20)
@@ -56,7 +61,8 @@ Item {
         id: fx
 
         visible:
-            gg.src !== null
+            gg.glassEnabled
+            && gg.src !== null
             && gg.frame !== null
             && !gg.failed
 

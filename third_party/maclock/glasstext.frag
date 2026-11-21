@@ -123,22 +123,22 @@ void main()
     glass = mix(glass, milk, 0.08 + 0.28 * frost);
 
     // Soft inner shading.
-    float edge = smoothstep(0.025, 0.58, s);
+    float edge = smoothstep(0.015, 0.48, s);
 
     glass *=
-        1.0 - 0.11 * pow(shade, 1.7) * edge;
+        1.0 - 0.15 * pow(shade, 1.7) * edge;
 
     // Broad reflected light.
-    float broad = pow(lit, 1.65) * edge;
+    float broad = pow(lit, 1.35) * edge;
 
     glass +=
-        vec3(0.055, 0.062, 0.070) * broad;
+        vec3(0.105, 0.120, 0.140) * broad;
 
     // Fine specular highlight.
-    float specular = pow(lit, 9.0) * edge;
+    float specular = pow(lit, 6.5) * edge;
 
     glass +=
-        vec3(0.20, 0.22, 0.25) * specular;
+        vec3(0.34, 0.39, 0.46) * specular;
 
     // Secondary soft reflection along the curved edge.
     float band = exp(
@@ -146,7 +146,7 @@ void main()
     ) * pow(lit, 1.35) * edge;
 
     glass +=
-        vec3(0.045, 0.052, 0.062) * band;
+        vec3(0.075, 0.090, 0.110) * band;
 
     // Very subtle cool-white glass contour.
     float fresnel = pow(edge, 1.6);
@@ -154,7 +154,7 @@ void main()
     glass = mix(
         glass,
         vec3(0.92, 0.95, 1.0),
-        fresnel * 0.060
+        fresnel * 0.140
     );
 
     vec3 col = mix(
